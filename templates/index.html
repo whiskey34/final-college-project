@@ -1,0 +1,106 @@
+{% extends "_layout.html" %} {% block title %} Home {% endblock %} {% block
+content %}
+
+
+<div class="container">
+  <div class="jumbotron">
+    <div class="container mb-2">
+      <h3>Live Camera</h3>
+      {% if is_camera %}
+      <a href="/?camera=off" class="btn btn-danger" role="button"
+        >Turn Off Camera</a
+      >
+      {% else %}
+      <a href="/?camera=on" class="btn btn-info" role="button"
+        >Turn On Camera</a
+      >
+      {% endif %}
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div id="video_wrapper" class="container">
+          {% if is_camera %}
+          <img src="{{ url_for('video_feed') }}" width="480" />
+          {% else %}
+          <img
+            src="{{ url_for('static', filename='img/no-camera-found.jpg') }}"
+            width="480"
+          />
+          {% endif %}
+        </div>
+      </div>
+      <div id="history" class="col-md-6 row bg-white pt-3" style="height: 360px; overflow-y: scroll"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block script %}
+<script>
+  var socket = io();
+  socket.on("prediction", function (message) {
+    var frame = new Uint8Array(message.frame);
+    var src = URL.createObjectURL(new Blob([frame], { type: "image/png" }));
+    console.log("blob: " + src);
+    console.log("label: " + message.label);
+    console.log("status: " + message.status);
+    console.log("time: " + message.time);
+
+    var img = src;
+    var label = message.label;
+    var status = message.status;
+    var time = message.time;
+
+    // $.ajax(
+    // {
+    //     url: "/record_data",
+    //     dataType: "json",
+    //     type: "POST",
+    //     data: { "img" : $img, "label": $label, "status": $status, "time": $time},
+    //     contentType: false,
+    //     processData: false,
+    //     success: function(getData)
+    //     {
+    //         console.log(getData);
+
+    //     }
+    // });
+
+    $.ajax({
+      type: "POST",
+      headers: { "Content-Type": "application/json" },
+      url: "/record_data",
+      datatype: "json",
+      data: JSON.stringify({
+        label: label,
+        status: status,
+        img: img,
+        time: time,
+      }),
+      success: function (response) {
+        console.log(response);
+      },
+      error: function (response, error) {
+        console.log(response);
+        console.log(error);
+      },
+    });
+
+    var content = $("#history").html();
+
+    $("#history").html(
+      '<div class="col-md-3 p-1 small">' +
+        '<img src="' +
+        src +
+        '" class="rounded" style="width:100px;"></img>' +
+        "<br>" +
+        message.label +
+        " : " +
+        (message.status ? "masuk" : "keluar") +
+        "<br>" +
+        message.time +
+        "</div>" +
+        content
+    );
+  });
+</script>
+{% endblock %}
